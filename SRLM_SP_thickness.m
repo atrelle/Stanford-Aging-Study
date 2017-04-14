@@ -1,4 +1,5 @@
 function [srlm_out,sp_out] = thickness_sg_auto(blind_id,data_folder,anat_ext,mask_ext,show)
+% Example Call:
 % [srlm_out,sp_out] = thickness_sg_auto('0440_01212015_004','/share/awagner/AM/7T_ROIS/JEFF/Unblinded_Scans/440_01212015_004','.nii','.nii.gz','1')
 % blind_id = 'blind033'
 % data_folder '/share/awagner/AM/7T_ROIS/FSL_Analysis/current/work' note:
@@ -7,17 +8,6 @@ function [srlm_out,sp_out] = thickness_sg_auto(blind_id,data_folder,anat_ext,mas
 % show = 0 or 1. 0 = do not show work. 1 = show work.
 % run sp_srlm_database_script before this
 % -------------------------------------------------------------------------
-
-% LATER:
-% 4. The data from Jeff's analysis is in ANALYZE 7.5 format - makes it
-% difficult to keep track of left vs. right.
-
-% 5. Modify Jeff's FSL analysis .img images to remove skipped slices. Start
-% with the correlation analysis images.
-
-
-
-
 % assumes size of x dim is 1024 (right is <512; left is > 512) - sag
 % 23may2016
 
@@ -146,7 +136,6 @@ for srlm = [0 1]; % (0 = sp, 1 = srlm)
                 % check added by sag
                 if results(current_slice_number,left_right)~=0;
                     keyboard
-                    % error('This should not happen.'); % to prevent overwriting over data already calculated
                 end
     
                 results(current_slice_number,left_right)=fse.pixdim(1)*20*(poInd-ngInd+4000-2000*srlm)/10001; % slice # and left/right added by sag
@@ -160,6 +149,7 @@ for srlm = [0 1]; % (0 = sp, 1 = srlm)
             end
         end
     end % for left_right, added by sag
+    
     switch srlm
         case 0
             sp_out = results;
