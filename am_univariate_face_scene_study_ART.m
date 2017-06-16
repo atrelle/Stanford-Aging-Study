@@ -20,6 +20,9 @@ spm_jobman('initcfg');
 % - Do we enter the duration as 4 or 0? I have been using 4.
 % - remove high pass filter
 
+% This script is set up to run on the unsmoothed, realignted data. Changes to
+% the bold filename would have to be made in order for it to be run on MNI data.
+
 study_or_test = 'study';
 
 analysis_directory = 'face_scene_study'; % this directory will be created and all files will be written there
@@ -160,6 +163,19 @@ if length(TRs_with_artifacts)>0;
     end
 end
 
+# Form matrix of session covariates
+# Runs 1 to n-1 modelled with dummy codes
+# Last column will be intercept term
+for session_num = sessions2include;
+  if session_num == sessions2include(end)
+    break
+  end
+    vectors_to_block_diag{session_num} = ones(vols_per_sess(session_num),1);
+end
+
+session_regressors = blkdiag(vectors_to_block_diag{1:end});
+session_regressors = [session_regressors ones(size(session_regressors,1), 1)];
+
 % Model Specification
 %--------------------------------------------------------------------------
 matlabbatch{1}.spm.stats.fmri_spec.dir = {subDir};
@@ -188,7 +204,7 @@ for motion_regressor = 1:6;
 end
 last_reg_num = 6;
 
-# Add artifact regressors if necessary - PROOF READ
+# Add artifact regressors if necessary
 if length(TRs_with_artifacts)>0;
   for art_regressor = 1:length(TRs_with_artifacts)
     matlabbatch{1}.spm.stats.fmri_spec.sess(1).regress(last_reg_num+1).name =...
@@ -200,9 +216,15 @@ if length(TRs_with_artifacts)>0;
   end
 end
 
+# Add session regressors
+for sess_col = 1:size(session_regressors,2);
+  matlabbatch{1}.spm.stats.fmri_spec.sess(1).regress(last_reg_num+1).name =...
+      ['Sess_Reg_' num2str(sess_col)];
+  matlabbatch{1}.spm.stats.fmri_spec.sess(1).regress(last_reg_num+1).val  =...
+      session_regressors(:, sess_col);
 
-
-# NEXT STEP - ADD SESSION EFFECTS
+  last_reg_num = last_reg_num + 1;
+end
 
 % Model Estimation
 %--------------------------------------------------------------------------
