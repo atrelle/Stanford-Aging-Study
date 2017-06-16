@@ -1,4 +1,4 @@
-function am_univariate_face_scene_study4(subID,sessions2include)
+function am_univariate_face_scene_study4(subID)
 
 start_dir = pwd;
 
