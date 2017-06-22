@@ -6,12 +6,6 @@ spm('Defaults','fMRI');
 spm_jobman('initcfg');
 
 % TO DO:
-% - Add covariate of no interest for session effects
-% - Need to add Michael's artifact regressor - can wait till more
-% complicated analyses
-% - Should be possible to have a variable # of runs provided that they are named
-%   1-4 in onset file.
-% (Exclusion of trials/onsets is based on edits to onsets file)
 % - I have added code to remove decompressed files after the analysis is complete.
 %   However, I have not added a '-f' flag as a precaution and will need to test
 
@@ -27,7 +21,7 @@ study_or_test = 'study';
 analysis_directory = 'face_scene_study'; % this directory will be created and all files will be written there
 onsets_file = 'study.csv'; % in behav directory
 
-cond_names = {'Face','Scene'}
+cond_names = {'Face','Scene'};
 
 % We can include more than one condition label in these cell arrays in
 % order to combine bins. Labels must correspond to those used in the onsets
@@ -55,7 +49,7 @@ num_conditions = length(condition_labels);
 onsets_file_path = ['/share/awagner/AM/data/' subID '/behav/' onsets_file];
 onsets_table = readtable(onsets_file_path);
 
-sessions2include = unique(table2array(onsets_table(:,1)));
+sessions2include = unique(table2array(onsets_table(:,1)))';
 
 % Concatenate files across sessions and decompress for SPM
 files = {};
@@ -146,31 +140,32 @@ for session_num = sessions2include;
   artifact_file = ['/share/awagner/AM/analysis/' study_or_test '/' subID...
       '/preproc/run_' num2str(session_num) '/artifacts.csv'];
   if session_num == 1;
-    big_art_table = readtable(artifact_file)
+    big_art_table = readtable(artifact_file);
   else
-    little_art_table = readtable(artifact_file)
-    big_art_table = [big_art_table; little_art_table]
+    little_art_table = readtable(artifact_file);
+    big_art_table = [big_art_table; little_art_table];
   end
 end
 
 % Sum across all types of artifacts (motion, spike, global intensity)
+artifact_array = table2array(big_art_table);
 artifact_vector = sum(artifact_array, 2);
 TRs_with_artifacts = find(artifact_vector > 0);
 
-# Form matrix of artifacts covariates.
+% Form matrix of artifacts covariates.
 if length(TRs_with_artifacts)>0;
-    artifacts_regressors = zeros(numTRs, len(TRs_with_artifacts));
+    numTRs = sum(vols_per_sess);
+    artifacts_regressors = zeros(numTRs, length(TRs_with_artifacts));
     col = 1;
-    keyboard % make sure that TRs_with_artifacts is a row vector
-    for this_TR = TRs_with_artifacts;
+    for this_TR = TRs_with_artifacts';
       artifacts_regressors(this_TR, col) = 1;
       col = col + 1;
     end
 end
 
-# Form matrix of session covariates
-# Runs 1 to n-1 modelled with dummy codes
-# Last column will be intercept term (added by SPM automatically)
+% Form matrix of session covariates
+% Runs 1 to n-1 modelled with dummy codes
+% Last column will be intercept term (added by SPM automatically)
 for session_num = sessions2include;
   if session_num == sessions2include(end)
     break
@@ -179,6 +174,9 @@ for session_num = sessions2include;
 end
 
 session_regressors = blkdiag(vectors_to_block_diag{1:end});
+
+% Pad bottom with zeros since last run does not get its own constant term
+session_regressors = [session_regressors; zeros(vols_per_sess(end), length(sessions2include)-1)];
 
 % Model Specification
 %--------------------------------------------------------------------------
@@ -208,7 +206,7 @@ for motion_regressor = 1:6;
 end
 last_reg_num = 6;
 
-# Add artifact regressors if necessary
+% Add artifact regressors if necessary
 if length(TRs_with_artifacts)>0;
   for art_regressor = 1:length(TRs_with_artifacts)
     matlabbatch{1}.spm.stats.fmri_spec.sess(1).regress(last_reg_num+1).name =...
@@ -220,7 +218,7 @@ if length(TRs_with_artifacts)>0;
   end
 end
 
-# Add session regressors
+% Add session regressors
 for sess_col = 1:size(session_regressors,2);
   matlabbatch{1}.spm.stats.fmri_spec.sess(1).regress(last_reg_num+1).name =...
       ['Sess_Reg_' num2str(sess_col)];
